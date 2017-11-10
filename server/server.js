@@ -38,6 +38,7 @@ app.get('/todos', (request, response) => {
 
 app.get('/todos/:id', (request, response) => {
 	var id = request.params.id;
+
 	if (!ObjectID.isValid(id)) {
 		return response.status(404).send('ID is not valid');
 	} else {
@@ -99,6 +100,25 @@ app.patch('/todos/:id', (request, response) => {
 });
 
 
+app.post('/users', (request, response) => {
+	var body = _.pick(request.body, ['name', 'email', 'password']);
+
+	let user = new User({
+		name: body.name,
+		email: body.email,
+		password: body.password,
+	});
+
+	user.save().then(() => {
+		return user.generateAuthToken();
+	})
+	.then((token) => {
+		response.header('x-auth', token).send({user});
+	})
+	.catch((error) => {
+		response.status(400).send(error);
+	});
+});
 
 
 
