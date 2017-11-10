@@ -7,6 +7,7 @@ require('./config/config');
 var {mongoose} = require('./db/mongoose');
 var {Todo} = require('./models/todo');
 var {User} = require('./models/user');
+var {authenticate} = require('./middleware/authenticate');
 
 var app = express();
 const port = process.env.PORT;
@@ -94,7 +95,7 @@ app.patch('/todos/:id', (request, response) => {
 				return response.send({todo});
 			}
 		}).catch((error) => {
-			response.status(400).send('');
+			response.status(400).send(error);
 		});
 	}
 });
@@ -120,7 +121,9 @@ app.post('/users', (request, response) => {
 	});
 });
 
-
+app.get('/users/me', authenticate, (request, response) => {
+	response.send(request.user);
+})
 
 app.listen(port, () => {
 	console.log(`* starting app on port ${port}`);
