@@ -4,23 +4,13 @@ const {ObjectID} = require('mongodb');
 
 const {app} = require('./../server');
 const {Todo} = require('./../models/todo');
+const {User} = require('./../models/user');
 
-const todos = [{
-	_id: new ObjectID(),
-	text: "First test todo"
-}, {
-	_id: new ObjectID(),
-	text: "Second test todo",
-	completed: true,
-	completedAt: 333
-}];
+const {todos, users, populateTodos, populateUsers} = require('./seed/seed');
 
-// sets up something before the tests are run - in this case we want to empty the database
-beforeEach((done) => {
-	Todo.remove({}).then(() => {
-		return Todo.insertMany(todos);
-	}).then(() => done());
-});
+beforeEach(populateTodos);
+beforeEach(populateUsers);
+
 
 describe('POST /todos', () => {
 	it('should create a new todo', (done) => {
@@ -189,4 +179,170 @@ describe('PATCH /todos/:id', () => {
 		.end(done);
 	});
 
+});
+
+
+describe('GET /users/me', () => {
+	it('should return user if authenticated', (done) => {
+		request(app)
+			.get('/users/me')
+			.set('x-auth', users[0].tokens[0].token)
+			.expect(200)
+			.expect((response) => {
+				expect(response.body._id).toBe(users[0]._id.toHexString());
+				expect(response.body.name).toBe(users[0].name);
+				expect(response.body.email).toBe(users[0].email);
+			})
+			.end(done);
+	});
+
+	it('should return 401 if not authenticated', (done) => {
+		request(app)
+		.get('/users/me')
+		.expect(401)
+		.expect((response) => {
+			expect(response.body).toEqual({});
+		})
+		.end(done);
+	});
+});
+
+describe('POST /users', () => {
+	it('should create a user', (done) => {
+		var name = 'Test User';
+		var email = 'example@example.com';
+		var password = '123mnb!';
+
+		request(app)
+			.post('/users')
+			.send({name, email, password})
+			.expect(200)
+			.expect((response) => {
+				expect(response.headers['x-auth']).toExist();
+				expect(response.body.user._id).toExist();
+				expect(response.body.user.name).toBe(name);
+				expect(response.body.user.email).toBe(email);
+			})
+			.end((error) => {
+				if (error) {
+					return done(error);
+				}
+
+				User.findOne({email}).then((user) => {
+					expect(user).toExist();
+					expect(user.password).toNotBe(password);
+					done();
+				})
+				.catch((error) => done(error));
+			});
+	});
+
+	it('should return validation error if request is invalid', (done) => {
+		var name = 'Test User';
+		var email = 'email';
+		var password = '123';
+
+		request(app)
+			.post('/users')
+			.send({name, email, password})
+			.expect(400)
+			.end(done);
+	});
+
+	it('should not create user if email is in use', (done) => {
+		var name = 'Test User';
+		var email = users[0].email;
+		var password = '123mnb!';
+
+		request(app)
+			.post('/users')
+			.send({name, email, password})
+			.expect(400)
+			.end(done);
+	});
+});
+
+
+describe('POST /users/login', () => {
+	it('should login user and return auth token', (done) => {
+		var email = users[1].email;
+		var password = users[1].password;
+
+		request(app)
+			.post('/users/login')
+			.send({email, password})
+			.expect(200)
+			.expect((response) => {
+				expect(response.headers['x-auth']).toExist();
+				expect(response.body.user.email).toBe(email);
+			})
+			.end((error, response) => {
+				if (error) {
+					return done(error)
+				}
+
+				User.findById(users[1]._id).then((user) => {
+					expect(user.tokens[0]).toInclude({
+						access: 'auth',
+						token: response.headers['x-auth']
+					});
+					done();
+				})
+				.catch((error) => done(error));
+			})
+	});
+
+	it('should reject invalid login', (done) => {
+		var email = users[1].email;
+		var password = '123456';
+
+		request(app)
+			.post('/users/login')
+			.send({email, password})
+			.expect(400)
+			.expect((response) => {
+				expect(response.headers['x-auth']).toNotExist();
+			})
+			.end((error, response) => {
+				if (error) {
+					return done(error);
+				}
+
+				User.findById(users[1]._id).then((user) => {
+					expect(user.tokens.length).toBe(0);
+					done();
+				})
+				.catch((error) => done(error));
+			});
+	});
+});
+
+
+describe('DELETE /users/me/token/', () => {
+	it('should delete user token if authenticated', (done) => {
+
+		request(app)
+			.delete('/users/me/token')
+			.set('x-auth', users[0].tokens[0].token)
+			.expect(200)
+			.end((error, response) => {
+				if (error) {
+					return done(error);
+				}
+
+				User.findById(users[0]._id).then((user) => {
+					expect(user.tokens.length).toBe(0);
+					done();
+				})
+				.catch((error) => done(error));
+			});
+	});
+
+	it('should return 401 if not authenticated', (done) => {
+
+		request(app)
+			.delete('/users/me/token')
+			.expect(401)
+			.end(done);
+	});
 });

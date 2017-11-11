@@ -123,7 +123,28 @@ app.post('/users', (request, response) => {
 
 app.get('/users/me', authenticate, (request, response) => {
 	response.send(request.user);
-})
+});
+
+app.post('/users/login', (request, response) => {
+	var body = _.pick(request.body, ['email', 'password']);
+
+	User.findByCredentials(body.email, body.password).then((user) => {
+		return user.generateAuthToken().then((token) => {
+			response.header('x-auth', token).send({user});
+		});
+	})
+	.catch((error) => {
+		response.status(400).send(error);
+	});
+});
+
+app.delete('/users/me/token', authenticate, (request, response) => {
+	request.user.removeToken(request.token).then(() => {
+		response.status(200).send();
+	}, () => {
+		response.status(400).send();
+	});
+});
 
 app.listen(port, () => {
 	console.log(`* starting app on port ${port}`);
