@@ -192,7 +192,6 @@ describe('PATCH /todos/:id', () => {
 		.send({completed: false})
 		.expect(200)
 		.expect((response) => {
-			console.log(response.body);
 			expect(response.body.todo.completed).toBe(false);
 			expect(response.body.todo.completedAt).toNotExist();
 		})
