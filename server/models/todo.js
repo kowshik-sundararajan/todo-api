@@ -1,10 +1,5 @@
 var mongoose = require('mongoose');
 
-/*
-	Creating a model
-	- name of model
-	- schema (properties of model)
-*/
 var Todo = mongoose.model('Todo', {
 	text: {
 		type: String,
@@ -19,19 +14,11 @@ var Todo = mongoose.model('Todo', {
 	completedAt: {
 		type: Number,
 		default: null
+	},
+	_creator: {
+		type: mongoose.Schema.Types.ObjectId,
+		required: true
 	}
 });
 
 module.exports = {Todo};
-
-// // creating an instance of Todo model
-// var newTodo = new Todo({
-// 	text: 'This is the first todo!'
-// });
-
-// // saving the instance to the DB
-// newTodo.save().then((doc) => {
-// 	console.log('* todo created', doc);
-// }, (error) => {
-// 	console.log('* unable to create todo', error);
-// });
