@@ -31,7 +31,6 @@ app.post('/todos', authenticate, (request, response) => {
 app.get('/todos', authenticate, (request, response) => {
 	Todo.find({_creator: request.user._id})
 	.then((todos) => {
-		console.log(JSON.stringify(todos, undefined, 2));
 		response.send(todos);
 	}, (error) => {
 		response.status(400).send(error);
